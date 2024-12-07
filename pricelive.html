@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screenshot and Extract Text</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.2/dist/tesseract.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .content {
+            padding: 20px;
+            text-align: center;
+        }
+        .screenshot-preview {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+        }
+        #ocr-text {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            background: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+        /* Red border for the screenshot area */
+        #screenshot-area {
+            position: absolute;
+            border: 2px solid red;
+            pointer-events: none; /* Makes it non-interactive */
+            z-index: 1000; /* Ensures it appears above all content */
+        }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <!-- IFC Markets Widget -->
+        <link rel="stylesheet" type="text/css" media="screen" href="https://www.ifcmarkets.com/css/widget/live_quotes_ifc_widget.css" />
+        <script type="text/javascript">
+            var lang = 'en';
+            var hname = "www.ifcmarkets.com";
+            var bid = 'Bid';
+            var ask = 'Ask';
+            var vi = document.createElement('script');
+            vi.type = 'text/javascript';
+            vi.async = true;
+            vi.src = 'https://www.ifcmarkets.com/js/live_quotes_ifc_widget.js';
+            var instrument_list = "XAUUSD";
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(vi, s);
+        </script>
+        <div id="ifc_widgetlivequotes" class="ifc_widgetlivequotes"></div>
+        <div id="ifc_nedlivequotes" class="ifc_nedlivequotes">
+            <a href="https://www.ifcmarkets.com/en/informers" target="blank" rel="nofollow">Provided</a> by IFC Markets
+        </div>
+
+        <!-- Screenshot and OCR Section -->
+        <div id="screenshot-preview" class="screenshot-preview"></div>
+        <div id="ocr-text"></div>
+    </div>
+
+    <!-- Red border for screenshot area -->
+    <div id="screenshot-area"></div>
+
+    <script>
+        // Define the dimensions and position of the vborder
+        const screenshotArea = document.getElementById('screenshot-area');
+        screenshotArea.style.width = '100%';  // Width of the screenshot
+        screenshotArea.style.height = '100px'; // Height of the screenshot
+        screenshotArea.style.left = '0px';    // Horizontal offset
+        screenshotArea.style.top = '0px';     // Vertical offset
+
+        window.addEventListener('load', async () => {
+            const ocrTextElement = document.getElementById('ocr-text');
+            const screenshotPreview = document.getElementById('screenshot-preview');
+            ocrTextElement.textContent = 'Processing screenshot...';
+        
+            setTimeout(async () => {
+                try {
+                    // Generate a canvas for a specific region
+                    const canvas = await html2canvas(document.body, {
+                        useCORS: true,
+                        logging: true,
+                        scrollX: 0,
+                        scrollY: 0,
+                        width: window.innerWidth, // Set the width to match the widget
+                        height: 100, // Set the height to match the widget
+                        x: 0,
+                        y: 0,
+                    });
+        
+                    // Convert the canvas to a Base64 image
+                    const imgDataURL = canvas.toDataURL('image/png');
+        
+                    // Display the screenshot preview
+                    const imgElement = new Image();
+                    imgElement.src = imgDataURL;
+                    imgElement.alt = 'Screenshot Preview';
+                    imgElement.style.maxWidth = '100%';
+                    screenshotPreview.innerHTML = ''; // Clear any existing content
+                    screenshotPreview.appendChild(imgElement);
+        
+                    // Pass the Base64 string to Tesseract.js for OCR
+                    const result = await Tesseract.recognize(imgDataURL, 'eng', {
+                        logger: info => console.log(info)
+                    });
+        
+                    // Extract only numbers from the OCR result using a regular expression
+                    const numbers = result.data.text.match(/\d+/g);
+                    const extractedNumbers = numbers ? numbers.join(' ') : 'No numbers found';
+        
+                    // Display the extracted numbers
+                    ocrTextElement.textContent = `Extracted Numbers:\n${extractedNumbers}`;
+                    console.log('Extracted Numbers:', extractedNumbers);
+        
+                    // Optionally, pass the extracted numbers to the parent window
+                    window.parent.postMessage({ extractedNumbers }, '*');
+                } catch (error) {
+                    console.error('Error capturing screenshot or extracting text:', error);
+                    ocrTextElement.textContent = 'Error processing screenshot or extracting text.';
+                }
+            }, 5000); // Delay the function by 5 seconds
+        });
+    </script>
+</body>
+</html>

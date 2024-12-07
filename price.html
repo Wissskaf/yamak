@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screenshot and Extract Text</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.2/dist/tesseract.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .content {
+            padding: 20px;
+            text-align: center;
+        }
+        .screenshot-preview {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+        }
+        #ocr-text {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            background: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <script type="text/javascript" src="https://www.bullionvault.com/chart/bullionvaultchart.js?v=1"></script>
+        <script type="text/javascript">
+            var options = {
+                bullion: 'gold',
+                currency: 'USD',
+                timeframe: '1h',
+                chartType: 'line',
+                miniChartModeAxis: 'oz',
+                referrerID: 'MYUSERNAME',
+                containerDefinedSize: true,
+                miniChartMode: false,
+                displayLatestPriceLine: true,
+                switchBullion: true,
+                switchCurrency: true,
+                switchTimeframe: true,
+                switchChartType: true,
+                exportButton: true
+            };
+            var chartBV = new BullionVaultChart(options, 'embed');
+        </script>
+        <div id="embed" style="height: 400px; width: 660px;"></div>
+
+        <div id="screenshot-preview" class="screenshot-preview"></div>
+        <div id="ocr-text"></div>
+    </div>
+
+    <script>
+        
+      // Inside your existing script, after extracting the numbers:
+window.addEventListener('load', async () => {
+    const ocrTextElement = document.getElementById('ocr-text');
+    ocrTextElement.textContent = 'Processing screenshot...';
+
+    setTimeout(async () => {
+        try {
+            // Generate a canvas for a specific region
+            const canvas = await html2canvas(document.body, {
+                useCORS: true, // Enables cross-origin resource sharing
+                logging: true, // Enables logging for debugging
+                scrollX: 0, // Start from the top-left of the viewport
+                scrollY: 0,
+                width: 75, // Width of the screenshot area
+                height: 275, // Height of the screenshot area
+                x: 550, // Horizontal offset
+                y: 80, // Vertical offset
+            });
+
+            // Convert the canvas to a Base64 image
+            const imgDataURL = canvas.toDataURL('image/png');
+
+            // Pass the Base64 string to Tesseract.js for OCR
+            const result = await Tesseract.recognize(imgDataURL, 'eng', {
+                logger: info => console.log(info) // Optional: log OCR progress
+            });
+
+            // Extract only numbers from the OCR result using a regular expression
+            const numbers = result.data.text.match(/\d+/g); // This will match all sequences of digits
+            const extractedNumbers = numbers ? numbers.join(' ') : 'No numbers found';
+
+            // Display the extracted numbers in the iframe
+            ocrTextElement.textContent = `Extracted Numbers:\n${extractedNumbers}`;
+            console.log('Extracted Numbers:', extractedNumbers);
+
+            // Pass the extracted numbers to the parent window
+            window.parent.postMessage({ extractedNumbers }, '*');
+
+        } catch (error) {
+            console.error('Error capturing screenshot or extracting text:', error);
+            ocrTextElement.textContent = 'Error processing screenshot or extracting text.';
+        }
+    }, 3000); // Delay the function by 3 seconds
+});
+
+    </script>
+</body>
+</html>
